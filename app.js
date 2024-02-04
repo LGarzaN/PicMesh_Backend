@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 
 const usersRoute = require("./api/users");
 const photosRoute = require("./api/photos");
+const eventsRoute = require("./api/events");
 
 app.use(morgan("dev"));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 
 app.use('/users', usersRoute);
 app.use('/photos', photosRoute);
+app.use('/events', eventsRoute);
 
 
 app.use((req, res, next) => {

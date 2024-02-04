@@ -9,6 +9,7 @@ const multerS3 = require("multer-s3");
 const AWS = require('aws-sdk');
 
 const { S3 } = require("@aws-sdk/client-s3");
+const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 
 //AWS S3 connection config
 AWS.config.update({
@@ -40,7 +41,7 @@ const s3Storage = multerS3({
 
 const upload = multer({storage: s3Storage});
 
-
+//Post image to S3 and DB
 router.post('/', upload.single('image'), (req, res, next) => {
     //Check if the request contains a file
     if (!req.file) {
@@ -71,6 +72,84 @@ router.post('/', upload.single('image'), (req, res, next) => {
     } else if (err) {
         return res.status(500).json({message: err.message});
     }
+});
+
+//Get all the photos for a specific event
+router.get('/event/:id', (req, res) => {
+    let sql = `SELECT URL, Likes, PosterId, DatePosted FROM Photos WHERE EventId = ${req.params.id} AND IsDeleted = 0`;
+    connection.query(sql, (error, results) => {
+        if (error) {
+            console.log(error);
+        } else {
+            res.status(200).json(results);
+        }
+    });
+});
+
+//Get all the photos a specific user has uploaded and have not been deleted
+router.get('/user/:id', (req, res) => {
+    let sql = `SELECT URL, Likes, PosterId, DatePosted, EventId FROM Photos WHERE PosterId = ${req.params.id} AND IsDeleted = 0`;
+    connection.query(sql, (error, results) => {
+        if (error) {
+            console.log(error);
+        } else {
+            res.status(200).json(results);
+        }
+    });
+});
+
+//Like photo
+router.patch('/like/:id', (req, res) => {
+    let sql = `UPDATE Photos SET Likes = Likes + 1 WHERE PhotoId = ${req.params.id}`;
+    connection.query(sql, (error, results) => {
+        if (error) {
+            console.log(error);
+        } else {
+            res.status(200).json({message: "Like added"});
+        }
+    });
+});
+
+router.delete('/:id', async (req, res) => {
+    // Get the ID of the photo from the URL parameters
+    const id = req.params.id;
+
+    // Fetch the photo from the database
+    connection.query('SELECT * FROM Photos WHERE Photoid = ?', [id], (error, results) => {
+        if (error) {
+            return res.status(500).json({message: error.message});
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({message: 'Photo not found'});
+        }
+
+        const photo = results[0];
+
+        // Extract the key from the URL of the photo
+        const url = new URL(photo.URL);
+        const key = decodeURIComponent(url.pathname.substr(1));
+
+        // Delete the photo from S3
+        const command = new DeleteObjectCommand({
+            Bucket: process.env.AWS_S3_BUCKET_NAME,
+            Key: key,
+        });
+
+        s3.send(command).then(() => {
+            // Update IsDeleted column in database
+            connection.query('UPDATE Photos SET IsDeleted = 1 WHERE PhotoId = ?', [id], (error, results) => {
+                if (error) {
+                    return res.status(500).json({message: error.message});
+                }
+
+                res.status(200).json({message: 'Photo deleted successfully'});
+            });
+        }).catch((error) => {
+            console.error(`Error deleting ${key}:`, error);
+            res.status(500).json({message: 'Failed to delete photo'});
+        });
+    });
 });
 
 module.exports = router;
