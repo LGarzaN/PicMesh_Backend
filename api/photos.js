@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const checkAuth = require('../api/middleware/check');
 
 const connection = require('../database');
 
@@ -44,8 +45,8 @@ const upload = multer({storage: s3Storage});
 //Post image to S3 and DB
 router.post('/', upload.single('image'), (req, res, next) => {
     //Check if the request contains a file
-    if (!req.file) {
-        return res.status(400).json({message: "No file uploaded"});
+    if (!req.file || !req.body.userId || !req.body.eventId) {
+        return res.status(400).json({message: "Missing body elements"});
     }
 
     // The URL of the uploaded file on S3
@@ -55,7 +56,7 @@ router.post('/', upload.single('image'), (req, res, next) => {
     let date = new Date();
     let formattedDate = date.toISOString().slice(0, 19).replace('T', ' ');
     
-    let sql = `INSERT INTO Photos (URL, Likes, PosterId, EventId, DatePosted) VALUES ("${imageUrl}", 0, 1, 1, "${formattedDate}")`;    
+    let sql = `INSERT INTO Photos (URL, Likes, PosterId, EventId, DatePosted) VALUES ("${imageUrl}", 0, ${req.body.userId}, ${req.body.eventId}, "${formattedDate}")`;    
     connection.query(sql, (error, results) => {
         if (error) {
             console.log(error);
