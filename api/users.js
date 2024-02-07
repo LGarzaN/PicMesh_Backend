@@ -4,17 +4,21 @@ const connection = require('../database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-router.get("/", (req, res, next) => {
-    let sql = 'SELECT * FROM Users';
+router.get("/:phone", (req, res, next) => {
+    let sql = 'SELECT * FROM Users WHERE Phone = ' + req.params.phone;
     connection.query(sql, (error, results, fields) => {
         if (error) {
-            res.status(500).json({
+            return res.status(500).json({
                 error: error.message
             })
-        };
+        }
+        if (results.length < 1) {
+            return res.status(404).json({
+                message: "No user found"
+            })
+        }
         res.status(200).json({
-            message: results,
-            fields: fields
+            user: results,
         })
     });
 });
