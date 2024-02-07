@@ -23,6 +23,25 @@ router.get("/:phone", (req, res, next) => {
     });
 });
 
+router.get("/email/:email", (req, res, next) => {
+    let sql = `SELECT Email FROM Users WHERE Email = "${req.params.email}"`;
+    connection.query(sql, (error, results, fields) => {
+        if (error) {
+            return res.status(500).json({
+                error: error.message
+            })
+        }
+        if (results.length < 1) {
+            return res.status(404).json({
+                message: "No user found"
+            })
+        }
+        res.status(200).json({
+            user: results,
+        })
+    });
+});
+
 router.post("/signup", (req, res, next) => {
     bcrypt.hash(req.body.password, 10, (err, hash) => {
         if (err) {
