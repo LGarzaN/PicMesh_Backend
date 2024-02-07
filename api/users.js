@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 router.get("/:phone", (req, res, next) => {
-    let sql = 'SELECT * FROM Users WHERE Phone = ' + req.params.phone;
+    let sql = 'SELECT Email FROM Users WHERE Phone = ' + req.params.phone;
     connection.query(sql, (error, results, fields) => {
         if (error) {
             return res.status(500).json({
