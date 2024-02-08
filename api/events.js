@@ -48,8 +48,8 @@ router.post("/", (req, res, next) => {
 
 }); 
 
-router.get("/User/:id", (req, res, next) => {
-    let sql = 'SELECT EventId FROM Joined where UserId = ' + req.params.id;
+router.get("/user/:id", (req, res, next) => {
+    let sql = 'SELECT E.* FROM Events E INNER JOIN Joined J ON E.EventId = J.EventId WHERE J.UserId = ' + req.params.id;
     connection.query(sql, (error, results, fields) => {
         if (error) {
             res.status(500).json({
