@@ -66,7 +66,7 @@ router.get("/:id", (req, res, next) => {
     let sql = 'SELECT * FROM Events where EventId = ' + req.params.id;
     connection.query(sql, (error, results, fields) => {
         if (error) {
-            res.status(500).json({
+            return res.status(500).json({
                 error: error.message
             })
         };
