@@ -147,8 +147,9 @@ router.post("/login", (req, res, next) => {
                     });
                 }
                 if (result) {
+                    let filekey = ""
                     if (results[0].profilePicture !== "none") {
-                        const filekey = results[0].ProfilePicture.split('/').pop();
+                        filekey = results[0].ProfilePicture.split('/').pop();
                     }
                     const token = jwt.sign({
                         phone: results[0].Phone,
@@ -159,7 +160,7 @@ router.post("/login", (req, res, next) => {
                     return res.status(200).json({
                         message: "Auth successful",
                         token: token,
-                        profilePicture: presignedUrl(filekey ?? "")
+                        profilePicture: presignedUrl(filekey)
                     });
                 }
                 res.status(401).json({
