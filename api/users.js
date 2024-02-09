@@ -3,6 +3,44 @@ const router = express.Router();
 const connection = require('../database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const presignedUrl = require('../functions/presignedUrl');
+
+const multer = require("multer");
+const multerS3 = require("multer-s3");
+
+const AWS = require('aws-sdk');
+
+const { S3 } = require("@aws-sdk/client-s3");
+
+//AWS S3 connection config
+AWS.config.update({
+ accessKeyId: process.env.AWS_S3_ACCESS_KEY,
+ secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
+ region: process.env.AWS_REGION,
+});
+
+const s3 = new S3({
+    credentials: {
+        accessKeyId: process.env.AWS_S3_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
+    },
+
+    region: process.env.AWS_REGION,
+});
+
+//Multer S3 storage config
+const s3Storage = multerS3({
+    s3: s3,
+    bucket: process.env.AWS_S3_BUCKET_NAME,
+    metadata: (req, file, cb) => {
+        cb(null, {fieldname: file.fieldname})
+    },
+    key: (req, file, cb) => {
+        cb(null, Date.now() + "_" + file.fieldname + "_" + file.originalname);
+    }
+});
+
+const upload = multer({storage: s3Storage});
 
 router.get("/:phone", (req, res, next) => {
     let sql = 'SELECT Email FROM Users WHERE Phone = ' + req.params.phone;
@@ -42,7 +80,7 @@ router.get("/email/:email", (req, res, next) => {
     });
 });
 
-router.post("/signup", (req, res, next) => {
+router.post("/signup", upload.single('profilePicture'), (req, res, next) => {
     bcrypt.hash(req.body.password, 10, (err, hash) => {
         if (err) {
             return res.status(500).json({
@@ -55,6 +93,9 @@ router.post("/signup", (req, res, next) => {
                 username: req.body.username,
                 phone: req.body.phone,
             };
+
+            const imageUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.amazonaws.com/${req.file.key}`;
+
             let sql1 = `Select * from Users where Phone = "${user.phone}"`;
             connection.query(sql1, (error, results) => {
                 if (error) {
@@ -66,7 +107,7 @@ router.post("/signup", (req, res, next) => {
                         message: "User already exists"
                     });
                 } else {
-                    let sql = `INSERT INTO Users (Email, Password, UserName, Phone, ProfilePicture) VALUES ("${user.email}", "${user.password}", "${user.username}", "${user.phone}", "")`;
+                    let sql = `INSERT INTO Users (Email, Password, UserName, Phone, ProfilePicture) VALUES ("${user.email}", "${user.password}", "${user.username}", "${user.phone}", "${imageUrl}")`;
                     connection.query(sql, (error, results) => {
                         if (error) {
                             res.status(500).json({
@@ -106,9 +147,11 @@ router.post("/login", (req, res, next) => {
                     });
                 }
                 if (result) {
+                    const filekey = results[0].ProfilePicture.split('/').pop();
                     const token = jwt.sign({
                         phone: results[0].Phone,
-                        userId: results[0].UserId
+                        userId: results[0].UserId,
+                        profilePicture: presignedUrl(filekey)
                     }, process.env.JWT_KEY, {
                         expiresIn: "1h"
                     });
