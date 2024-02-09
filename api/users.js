@@ -151,13 +151,13 @@ router.post("/login", (req, res, next) => {
                     const token = jwt.sign({
                         phone: results[0].Phone,
                         userId: results[0].UserId,
-                        profilePicture: presignedUrl(filekey)
                     }, process.env.JWT_KEY, {
                         expiresIn: "1h"
                     });
                     return res.status(200).json({
                         message: "Auth successful",
-                        token: token
+                        token: token,
+                        profilePicture: presignedUrl(filekey)
                     });
                 }
                 res.status(401).json({
