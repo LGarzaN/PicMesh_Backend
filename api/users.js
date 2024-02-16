@@ -93,8 +93,14 @@ router.post("/signup", upload.single('profilePicture'), (req, res, next) => {
                 username: req.body.username,
                 phone: req.body.phone,
             };
-
-            const imageUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.amazonaws.com/${req.file.key}`;
+            let imageUrl = 'none';
+            try {
+                console.log(req.file.key)
+                imageUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.amazonaws.com/${req.file.key}`;
+            } catch(error) {
+                console.log(error);
+            }
+            
 
             let sql1 = `Select * from Users where Phone = "${user.phone}"`;
             connection.query(sql1, (error, results) => {
@@ -154,9 +160,7 @@ router.post("/login", (req, res, next) => {
                     const token = jwt.sign({
                         phone: results[0].Phone,
                         userId: results[0].UserId,
-                    }, process.env.JWT_KEY, {
-                        expiresIn: "1h"
-                    });
+                    }, process.env.JWT_KEY, {});
                     return res.status(200).json({
                         message: "Auth successful",
                         token: token,
